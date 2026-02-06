@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Room, Battle, Character, BattleResolution } from "../types";
+import type { Room, Battle, Character, BattleResolution, PlayerConnection } from "../types";
 
 interface GameState {
   // Session
@@ -9,6 +9,11 @@ interface GameState {
   // Room
   room: Room | null;
   playerSlot: "player1" | "player2" | null;
+  isHost: boolean;
+
+  // Players (tracked separately for UI reactivity)
+  player1: PlayerConnection | null;
+  player2: PlayerConnection | null;
 
   // Battle
   battle: Battle | null;
@@ -21,10 +26,15 @@ interface GameState {
   characters: Character[];
   selectedCharacterId: string | null;
 
+  // Errors
+  error: string | null;
+
   // Actions
   setSession: (sessionId: string, username: string) => void;
   setRoom: (room: Room) => void;
   setPlayerSlot: (slot: "player1" | "player2") => void;
+  setIsHost: (isHost: boolean) => void;
+  setPlayer: (slot: "player1" | "player2", player: PlayerConnection) => void;
   setBattle: (battle: Battle) => void;
   setLastResolution: (resolution: BattleResolution) => void;
   setIsResolving: (resolving: boolean) => void;
@@ -32,6 +42,7 @@ interface GameState {
   setOpponentReady: (ready: boolean) => void;
   setCharacters: (characters: Character[]) => void;
   setSelectedCharacterId: (id: string | null) => void;
+  setError: (error: string | null) => void;
   reset: () => void;
 }
 
@@ -40,6 +51,9 @@ const initialState = {
   username: null,
   room: null,
   playerSlot: null,
+  isHost: false,
+  player1: null,
+  player2: null,
   battle: null,
   lastResolution: null,
   isResolving: false,
@@ -47,6 +61,7 @@ const initialState = {
   opponentReady: false,
   characters: [],
   selectedCharacterId: null,
+  error: null,
 };
 
 export const useGameStore = create<GameState>((set) => ({
@@ -55,6 +70,9 @@ export const useGameStore = create<GameState>((set) => ({
   setSession: (sessionId, username) => set({ sessionId, username }),
   setRoom: (room) => set({ room }),
   setPlayerSlot: (playerSlot) => set({ playerSlot }),
+  setIsHost: (isHost) => set({ isHost }),
+  setPlayer: (slot, player) =>
+    set(slot === "player1" ? { player1: player } : { player2: player }),
   setBattle: (battle) => set({ battle }),
   setLastResolution: (lastResolution) => set({ lastResolution }),
   setIsResolving: (isResolving) => set({ isResolving }),
@@ -62,5 +80,6 @@ export const useGameStore = create<GameState>((set) => ({
   setOpponentReady: (opponentReady) => set({ opponentReady }),
   setCharacters: (characters) => set({ characters }),
   setSelectedCharacterId: (selectedCharacterId) => set({ selectedCharacterId }),
+  setError: (error) => set({ error }),
   reset: () => set(initialState),
 }));

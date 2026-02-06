@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Route, Switch } from "wouter";
 import { Landing } from "./pages/Landing";
 import { HostEnvironment } from "./pages/HostEnvironment";
@@ -8,8 +9,28 @@ import { Battle } from "./pages/Battle";
 import { CharacterGallery } from "./pages/CharacterGallery";
 import { CharacterCreate } from "./pages/CharacterCreate";
 import { CharacterEdit } from "./pages/CharacterEdit";
+import { ensureSession } from "./lib/session";
+import { useGameStore } from "./stores/gameStore";
 
 export function App() {
+  const [ready, setReady] = useState(false);
+  const setSession = useGameStore((s) => s.setSession);
+
+  useEffect(() => {
+    ensureSession().then((sessionId) => {
+      setSession(sessionId, "");
+      setReady(true);
+    });
+  }, [setSession]);
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+        <p className="text-gray-500">Loading...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <Switch>

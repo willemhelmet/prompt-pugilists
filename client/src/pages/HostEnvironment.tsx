@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ENVIRONMENT_CHAR_LIMIT } from "../types";
+import { socket, connectSocket } from "../lib/socket";
+import { useGameStore } from "../stores/gameStore";
 
 const PRESETS = [
   { label: "Volcanic Arena", description: "A volcanic arena with rivers of molten lava crisscrossing the obsidian floor" },
@@ -13,12 +15,30 @@ const PRESETS = [
 
 export function HostEnvironment() {
   const [environment, setEnvironment] = useState("");
+  const [creating, setCreating] = useState(false);
   const [, navigate] = useLocation();
+  const { setRoom, setIsHost } = useGameStore();
+
+  useEffect(() => {
+    connectSocket();
+
+    function onRoomCreated({ roomId, room }: { roomId: string; room: any }) {
+      setRoom(room);
+      setIsHost(true);
+      navigate(`/host/${roomId}`);
+    }
+
+    socket.on("room:created", onRoomCreated);
+
+    return () => {
+      socket.off("room:created", onRoomCreated);
+    };
+  }, [navigate, setRoom, setIsHost]);
 
   function handleContinue() {
-    if (!environment.trim()) return;
-    // TODO: create room via socket, then navigate to /host/:roomId
-    console.log("Creating room with environment:", environment);
+    if (!environment.trim() || creating) return;
+    setCreating(true);
+    socket.emit("room:create", { username: "Host", environment: environment.trim() });
   }
 
   return (
@@ -57,10 +77,10 @@ export function HostEnvironment() {
 
       <button
         onClick={handleContinue}
-        disabled={!environment.trim()}
+        disabled={!environment.trim() || creating}
         className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 py-3 rounded-lg font-semibold text-lg transition-colors"
       >
-        Continue
+        {creating ? "Creating room..." : "Continue"}
       </button>
     </div>
   );

@@ -66,3 +66,72 @@ export function checkVictory(battle: Battle): string | null {
   if (battle.player2.currentHp <= 0) return battle.player1.playerId;
   return null;
 }
+
+// Placeholder resolution until ChatGPT is integrated
+function rollDice(formula: string): { result: number; modifier: number } {
+  // Parse "1d20+3" style formulas
+  const match = formula.match(/(\d+)d(\d+)(?:\+(\d+))?/);
+  if (!match) return { result: 10, modifier: 0 };
+  const [, count, sides, mod] = match;
+  let total = 0;
+  for (let i = 0; i < parseInt(count); i++) {
+    total += Math.floor(Math.random() * parseInt(sides)) + 1;
+  }
+  const modifier = parseInt(mod || "0");
+  return { result: total + modifier, modifier };
+}
+
+export function placeholderResolve(
+  battle: Battle,
+  action1: string,
+  action2: string,
+): BattleResolution {
+  const p1 = battle.player1;
+  const p2 = battle.player2;
+
+  const p1Attack = rollDice("1d20+3");
+  const p1Damage = rollDice("2d6+2");
+  const p2Attack = rollDice("1d20+3");
+  const p2Damage = rollDice("2d6+2");
+
+  const p1Hit = p1Attack.result >= 10;
+  const p2Hit = p2Attack.result >= 10;
+
+  const p1HpChange = p2Hit ? -p2Damage.result : 0;
+  const p2HpChange = p1Hit ? -p1Damage.result : 0;
+
+  const events: string[] = [];
+  if (p1Hit) events.push(`${p1.character.name}'s attack landed for ${-p2HpChange} damage`);
+  else events.push(`${p1.character.name}'s attack missed`);
+  if (p2Hit) events.push(`${p2.character.name}'s attack landed for ${-p1HpChange} damage`);
+  else events.push(`${p2.character.name}'s attack missed`);
+
+  return {
+    player1Action: action1,
+    player2Action: action2,
+    interpretation: `${p1.character.name} attempts: "${action1.slice(0, 60)}..." while ${p2.character.name} attempts: "${action2.slice(0, 60)}..."`,
+    player1HpChange: p1HpChange,
+    player2HpChange: p2HpChange,
+    newBattleState: {
+      environmentDescription: battle.currentState.environmentDescription,
+      player1Condition: p1Hit
+        ? `${p1.character.name} strikes true`
+        : `${p1.character.name}'s attack goes wide`,
+      player2Condition: p2Hit
+        ? `${p2.character.name} strikes true`
+        : `${p2.character.name}'s attack goes wide`,
+      previousEvents: [
+        ...battle.currentState.previousEvents.slice(-4),
+        ...events,
+      ],
+    },
+    videoPrompt: `${p1.character.name} and ${p2.character.name} clash in ${battle.currentState.environmentDescription}`,
+    diceRolls: [
+      { player: "player1", purpose: "attack roll", formula: "1d20+3", result: p1Attack.result, modifier: p1Attack.modifier },
+      ...(p1Hit ? [{ player: "player1" as const, purpose: "damage", formula: "2d6+2", result: p1Damage.result, modifier: p1Damage.modifier }] : []),
+      { player: "player2", purpose: "attack roll", formula: "1d20+3", result: p2Attack.result, modifier: p2Attack.modifier },
+      ...(p2Hit ? [{ player: "player2" as const, purpose: "damage", formula: "2d6+2", result: p2Damage.result, modifier: p2Damage.modifier }] : []),
+    ],
+    timestamp: new Date().toISOString(),
+  };
+}

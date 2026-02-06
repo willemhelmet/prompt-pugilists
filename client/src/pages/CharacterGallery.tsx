@@ -1,7 +1,26 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { useGameStore } from "../stores/gameStore";
+import { api } from "../lib/api";
+import type { Character } from "../types";
 
 export function CharacterGallery() {
-  // TODO: fetch characters from API
+  const sessionId = useGameStore((s) => s.sessionId);
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    api
+      .getCharacters(sessionId)
+      .then(setCharacters)
+      .finally(() => setLoading(false));
+  }, [sessionId]);
+
+  async function handleDelete(id: string) {
+    await api.deleteCharacter(id);
+    setCharacters((prev) => prev.filter((c) => c.id !== id));
+  }
 
   return (
     <div className="flex flex-col min-h-screen p-6 gap-6 max-w-lg mx-auto">
@@ -22,13 +41,40 @@ export function CharacterGallery() {
         + Create New Character
       </Link>
 
-      {/* Character grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* TODO: map characters */}
-        <p className="col-span-2 text-center text-gray-500 py-12">
+      {loading ? (
+        <p className="text-center text-gray-500 py-12">Loading...</p>
+      ) : characters.length === 0 ? (
+        <p className="text-center text-gray-500 py-12">
           No characters yet. Create one to get started!
         </p>
-      </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4">
+          {characters.map((c) => (
+            <div
+              key={c.id}
+              className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden"
+            >
+              <div className="aspect-square bg-gray-800">
+                <img
+                  src={c.imageUrl}
+                  alt={c.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="p-3">
+                <p className="font-semibold truncate">{c.name}</p>
+                <p className="text-xs text-gray-400 truncate">{c.textPrompt}</p>
+                <button
+                  onClick={() => handleDelete(c.id)}
+                  className="text-xs text-red-400 hover:text-red-300 mt-2 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

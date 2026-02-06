@@ -1,7 +1,8 @@
 import type { Server, Socket } from "socket.io";
 import type Database from "better-sqlite3";
-import type { ClientEvents, ServerEvents } from "../types.js";
+import type { ClientEvents, ServerEvents, Character } from "../types.js";
 import { roomManager } from "../managers/RoomManager.js";
+import { createBattle, applyResolution, checkVictory, placeholderResolve } from "../managers/BattleManager.js";
 
 type IO = Server<ClientEvents, ServerEvents>;
 type ClientSocket = Socket<ClientEvents, ServerEvents>;
@@ -50,10 +51,30 @@ export function registerSocketHandlers(io: IO, db: Database.Database): void {
 
       player.characterId = characterId;
 
-      // TODO: fetch full character from DB and broadcast
+      // Fetch character from DB
+      const row = db
+        .prepare("SELECT * FROM characters WHERE id = ?")
+        .get(characterId) as any;
+
+      if (!row) {
+        socket.emit("room:error", { message: "Character not found" });
+        return;
+      }
+
+      const character: Character = {
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        imageUrl: row.image_url,
+        textPrompt: row.text_prompt,
+        referenceImageUrl: row.reference_image_url,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+
       io.to(roomId).emit("character:selected", {
         playerId: player.playerId,
-        character: null as any, // placeholder — will fetch from DB
+        character,
       });
     });
 
@@ -63,12 +84,47 @@ export function registerSocketHandlers(io: IO, db: Database.Database): void {
 
       player.ready = true;
 
-      // Check if both players are ready
       const room = roomManager.getRoom(roomId);
-      if (room?.players.player1?.ready && room?.players.player2?.ready) {
-        // TODO: create battle and start
-        roomManager.setRoomState(roomId, "battle");
-      }
+      if (!room) return;
+
+      // Check if both players are ready with characters selected
+      const p1 = room.players.player1;
+      const p2 = room.players.player2;
+      if (!p1?.ready || !p2?.ready || !p1.characterId || !p2.characterId) return;
+
+      // Fetch both characters
+      const c1 = db.prepare("SELECT * FROM characters WHERE id = ?").get(p1.characterId) as any;
+      const c2 = db.prepare("SELECT * FROM characters WHERE id = ?").get(p2.characterId) as any;
+      if (!c1 || !c2) return;
+
+      const toChar = (row: any): Character => ({
+        id: row.id,
+        userId: row.user_id,
+        name: row.name,
+        imageUrl: row.image_url,
+        textPrompt: row.text_prompt,
+        referenceImageUrl: row.reference_image_url,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      });
+
+      // Create battle
+      const battle = createBattle(
+        roomId,
+        toChar(c1),
+        toChar(c2),
+        p1.playerId,
+        p2.playerId,
+        room.environment || "A mystical arena crackling with arcane energy",
+      );
+
+      room.battle = battle;
+      roomManager.setRoomState(roomId, "battle");
+
+      io.to(roomId).emit("battle:start", { battle });
+      io.to(roomId).emit("battle:request_actions", { timeLimit: 30 });
+
+      console.log(`Battle started in room ${roomId}: ${c1.name} vs ${c2.name}`);
     });
 
     // ── Battle events ────────────────────────────────────────
@@ -91,8 +147,40 @@ export function registerSocketHandlers(io: IO, db: Database.Database): void {
 
       // If both actions are in, resolve the round
       if (room.battle.pendingActions.player1 && room.battle.pendingActions.player2) {
-        // TODO: resolve combat via ChatGPT
-        console.log("Both actions received — resolving round...");
+        io.to(roomId).emit("battle:resolving");
+
+        const action1 = room.battle.pendingActions.player1.actionText;
+        const action2 = room.battle.pendingActions.player2.actionText;
+
+        // TODO: replace with ChatGPT resolution
+        const resolution = placeholderResolve(room.battle, action1, action2);
+
+        applyResolution(room.battle, resolution);
+
+        // Check victory
+        const winnerId = checkVictory(room.battle);
+        if (winnerId) {
+          room.battle.winnerId = winnerId;
+          room.battle.winCondition = "hp_depleted";
+          room.battle.completedAt = new Date().toISOString();
+
+          io.to(roomId).emit("battle:end", {
+            winnerId,
+            battle: room.battle,
+            finalResolution: resolution,
+          });
+          console.log(`Battle ended in room ${roomId}, winner: ${winnerId}`);
+        } else {
+          io.to(roomId).emit("battle:round_complete", {
+            battle: room.battle,
+            resolution,
+          });
+
+          // Clear pending actions for next round
+          room.battle.pendingActions = { player1: null, player2: null };
+
+          io.to(roomId).emit("battle:request_actions", { timeLimit: 30 });
+        }
       }
     });
 

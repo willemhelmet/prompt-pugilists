@@ -126,6 +126,7 @@ export function placeholderResolve(
       ],
     },
     videoPrompt: `${p1.character.name} and ${p2.character.name} clash in ${battle.currentState.environmentDescription}`,
+    announcerText: `${p1.character.name} and ${p2.character.name} clash in an explosive exchange!`,
     diceRolls: [
       { player: "player1", purpose: "attack roll", formula: "1d20+3", result: p1Attack.result, modifier: p1Attack.modifier },
       ...(p1Hit ? [{ player: "player1" as const, purpose: "damage", formula: "2d6+2", result: p1Damage.result, modifier: p1Damage.modifier }] : []),

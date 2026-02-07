@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { socket, connectSocket } from "../lib/socket";
 import { useGameStore } from "../stores/gameStore";
 import { ReactorVideoSection } from "../components/ReactorVideoSection";
+import { useAnnouncer } from "../hooks/useAnnouncer";
 import type { PlayerConnection, Battle, BattleResolution } from "../types";
 
 export function HostDisplay() {
@@ -18,6 +19,9 @@ export function HostDisplay() {
     text: string;
   }
   const [log, setLog] = useState<LogEntry[]>([]);
+  const { announce, muted, toggleMute, isSpeaking, available } = useAnnouncer();
+  const announceRef = useRef(announce);
+  announceRef.current = announce;
 
   function addLog(msg: string, type: LogEntry["type"] = "info") {
     setLog((prev) => [...prev, { type, text: msg }]);
@@ -38,6 +42,9 @@ export function HostDisplay() {
     function onBattleStart({ battle }: { battle: Battle }) {
       setBattle(battle);
       addLog(`Battle started: ${battle.player1.character.name} vs ${battle.player2.character.name}`);
+      announceRef.current(
+        `Ladies and gentlemen! ${battle.player1.character.name} versus ${battle.player2.character.name}! Let the battle BEGIN!`,
+      );
     }
 
     function onActionReceived({ playerId }: { playerId: string }) {
@@ -54,6 +61,7 @@ export function HostDisplay() {
       setLastResolution(resolution);
       setResolving(false);
       addLog(resolution.interpretation, "narrative");
+      announceRef.current(resolution.announcerText || resolution.interpretation);
       const p1Dmg = resolution.player1HpChange;
       const p2Dmg = resolution.player2HpChange;
       if (p1Dmg !== 0 || p2Dmg !== 0) {
@@ -76,6 +84,9 @@ export function HostDisplay() {
           ? battle.player1.character.name
           : battle.player2.character.name;
       addLog(`${winnerName} wins!`);
+      announceRef.current(
+        finalResolution.announcerText || `${winnerName} is VICTORIOUS! What an INCREDIBLE battle!`,
+      );
     }
 
     socket.on("room:player_joined", onPlayerJoined);
@@ -108,9 +119,25 @@ export function HostDisplay() {
           Room Code:{" "}
           <span className="font-mono text-white text-3xl font-bold tracking-widest">{roomId}</span>
         </span>
-        <span className="text-sm text-gray-400">
-          {battle ? `Round ${battle.resolutionHistory.length + 1}` : ""}
-        </span>
+        <div className="flex items-center gap-3">
+          {available && (
+            <button
+              onClick={toggleMute}
+              className={`text-xs px-3 py-1 rounded-full border transition-colors ${
+                muted
+                  ? "border-gray-600 text-gray-500 hover:border-gray-400"
+                  : isSpeaking
+                    ? "border-yellow-600 text-yellow-400 animate-pulse"
+                    : "border-green-700 text-green-400 hover:border-green-500"
+              }`}
+            >
+              {muted ? "Announcer OFF" : isSpeaking ? "Announcing..." : "Announcer ON"}
+            </button>
+          )}
+          <span className="text-sm text-gray-400">
+            {battle ? `Round ${battle.resolutionHistory.length + 1}` : ""}
+          </span>
+        </div>
       </div>
 
       {/* Player HP bars (only shown once battle starts) */}

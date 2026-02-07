@@ -53,6 +53,11 @@ You are the Dungeon Master for a high-stakes magical duel. Your role is to:
 - Reference character appearance if relevant
 - Example: "In the volcanic arena, Zara's fireball collides with Mordak's ice barrier above a river of lava. The elements clash in a blinding explosion of steam and light. When the mist clears, Mordak is on one knee at the edge of the lava flow, his shield shattered into glittering fragments."
 
+**Announcer Text:**
+- ONE short punchy sentence, max 15 words
+- Hyped fight announcer style — exclamation marks, dramatic
+- Example: "DEVASTATING fireball! Mordak crumbles to 8 HP!"
+
 ## Response Format
 
 Return ONLY valid JSON:
@@ -76,6 +81,8 @@ Return ONLY valid JSON:
   },
 
   "videoPrompt": "A massive fireball erupts from Zara's hands and crashes into Mordak's shimmering ice barrier over rivers of flowing lava. The collision creates a blinding explosion of steam and crackling energy. When the mist clears, Mordak is on one knee at the edge of a lava flow, his shield shattered into glittering fragments, smoke rising from his scorched robes.",
+
+  "announcerText": "DEVASTATING fireball! Mordak crumbles to 8 HP!",
 
   "diceRolls": [
     {
@@ -175,6 +182,7 @@ export async function resolveCombat(
       player1Action: action1,
       player2Action: action2,
       interpretation: parsed.interpretation,
+      announcerText: parsed.announcerText || parsed.interpretation,
       player1HpChange: parsed.player1HpChange,
       player2HpChange: parsed.player2HpChange,
       newBattleState: parsed.newBattleState,

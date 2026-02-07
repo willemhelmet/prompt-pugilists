@@ -227,6 +227,7 @@ export function registerSocketHandlers(io: IO, db: Database.Database): void {
           player1Action: "",
           player2Action: "",
           interpretation: `${forfeiter.character.name} has forfeited the battle. ${winner.character.name} wins!`,
+          announcerText: `It's OVER! ${forfeiter.character.name} throws in the towel! ${winner.character.name} wins by FORFEIT!`,
           player1HpChange: 0,
           player2HpChange: 0,
           newBattleState: room.battle.currentState,

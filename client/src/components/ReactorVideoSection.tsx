@@ -120,7 +120,7 @@ export function ReactorVideoSection({
 
   if (state === "idle" || state === "loading") {
     return (
-      <div className="flex-1 bg-gray-900 rounded-xl flex items-center justify-center border border-gray-800 min-h-[300px]">
+      <div className="w-full h-full bg-gray-900 flex items-center justify-center">
         <p className="text-gray-400 animate-pulse">Connecting to Reactor...</p>
       </div>
     );
@@ -128,7 +128,7 @@ export function ReactorVideoSection({
 
   if (state === "error") {
     return (
-      <div className="flex-1 bg-gray-900 rounded-xl flex flex-col items-center justify-center border border-gray-800 min-h-[300px] gap-4">
+      <div className="w-full h-full bg-gray-900 flex flex-col items-center justify-center gap-4">
         <p className="text-red-400">Video connection failed</p>
         {errorMsg && <p className="text-gray-500 text-sm max-w-sm text-center">{errorMsg}</p>}
         <button
@@ -151,7 +151,7 @@ export function ReactorVideoSection({
 
   // state === "ready" — render Reactor video
   return (
-    <div className="flex-1 bg-gray-900 rounded-xl overflow-hidden border border-gray-800 min-h-[300px] relative">
+    <div className="w-full h-full bg-gray-900 overflow-hidden relative">
       <ReactorProvider
         modelName={MODEL_NAME}
         jwtToken={jwtToken!}
@@ -160,7 +160,7 @@ export function ReactorVideoSection({
         <ReactorStatusWatcher onError={handleConnectionError} />
         <ReactorView
           className="w-full h-full"
-          style={{ minHeight: "300px" }}
+          style={{ minHeight: "100%" }}
           videoObjectFit="cover"
         />
         <ReactorVideoController

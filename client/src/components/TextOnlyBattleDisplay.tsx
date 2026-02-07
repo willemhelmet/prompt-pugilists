@@ -21,7 +21,7 @@ export function TextOnlyBattleDisplay({
   const p2 = battle?.player2;
 
   return (
-    <div className="flex-1 bg-gray-900 rounded-xl flex items-center justify-center border border-gray-800 min-h-[300px]">
+    <div className="w-full h-full bg-gray-900 flex items-center justify-center">
       {winner ? (
         <div className="text-center">
           <div className="flex items-center justify-center gap-8 mb-6">

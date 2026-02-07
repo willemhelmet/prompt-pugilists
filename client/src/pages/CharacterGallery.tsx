@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useGameStore } from "../stores/gameStore";
 import { api } from "../lib/api";
-import { DEFAULT_CHARACTERS } from "../lib/defaultCharacters";
 import type { Character } from "../types";
 
 export function CharacterGallery() {
@@ -83,37 +82,6 @@ export function CharacterGallery() {
         </div>
       )}
 
-      {/* Starter Characters */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-300 mb-3">
-          Starter Characters
-        </h3>
-        <div className="grid grid-cols-2 gap-4">
-          {DEFAULT_CHARACTERS.map((c) => (
-            <div
-              key={c.id}
-              className="bg-gray-900 border border-indigo-900/50 rounded-lg overflow-hidden"
-            >
-              <div className="aspect-square bg-gray-800">
-                <img
-                  src={c.imageUrl}
-                  alt={c.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="p-3">
-                <p className="font-semibold truncate">{c.name}</p>
-                <p className="text-xs text-gray-400 truncate">
-                  {c.textPrompt}
-                </p>
-                <span className="text-xs text-indigo-400 mt-2 inline-block">
-                  Default
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

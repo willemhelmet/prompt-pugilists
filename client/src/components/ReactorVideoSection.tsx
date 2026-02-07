@@ -8,7 +8,7 @@ import {
 import { ReactorVideoController } from "./ReactorVideoController";
 import { VideoOverlay } from "./VideoOverlay";
 import { TextOnlyBattleDisplay } from "./TextOnlyBattleDisplay";
-import type { Battle, BattleResolution } from "../types";
+import type { Battle, BattleResolution, SelectedCharacter } from "../types";
 
 type ReactorState = "idle" | "loading" | "ready" | "error";
 
@@ -16,6 +16,8 @@ const MODEL_NAME = "livecore";
 
 interface ReactorVideoSectionProps {
   battle: Battle | null;
+  environment: string | null;
+  selectedCharacters: SelectedCharacter[];
   lastResolution: BattleResolution | null;
   resolving: boolean;
   winner: string | null;
@@ -49,6 +51,8 @@ function ReactorStatusWatcher({ onError }: { onError: (msg: string) => void }) {
 
 export function ReactorVideoSection({
   battle,
+  environment,
+  selectedCharacters,
   lastResolution,
   resolving,
   winner,
@@ -61,12 +65,12 @@ export function ReactorVideoSection({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
-  // Derive a stable boolean so the effect doesn't re-run on every battle state update
-  const battleStarted = !!battle;
+  // Activate as soon as we have environment OR battle
+  const shouldActivate = !!(battle || environment);
 
-  // Only fetch JWT when battle starts (and we have an API key)
+  // Fetch JWT when we should activate (and we have an API key)
   useEffect(() => {
-    if (!battleStarted || !apiKey) return;
+    if (!shouldActivate || !apiKey) return;
 
     setState("loading");
     let cancelled = false;
@@ -87,7 +91,7 @@ export function ReactorVideoSection({
       });
 
     return () => { cancelled = true; };
-  }, [battleStarted, apiKey, retryCount]);
+  }, [shouldActivate, apiKey, retryCount]);
 
   function handleRetry() {
     setErrorMsg(null);
@@ -100,8 +104,8 @@ export function ReactorVideoSection({
     setState("error");
   }, []);
 
-  // No API key, or no battle yet — text-only display
-  if (!apiKey || !battle) {
+  // No API key, or nothing to show yet — text-only display
+  if (!apiKey || (!battle && !environment)) {
     return (
       <TextOnlyBattleDisplay
         battle={battle}
@@ -161,16 +165,28 @@ export function ReactorVideoSection({
         />
         <ReactorVideoController
           battle={battle}
+          environment={environment}
+          selectedCharacters={selectedCharacters}
           lastResolution={lastResolution}
           resolving={resolving}
           winner={winner}
         />
-        <VideoOverlay
-          battle={battle}
-          resolving={resolving}
-          winner={winner}
-          onBackToMenu={onBackToMenu}
-        />
+        {battle ? (
+          <VideoOverlay
+            battle={battle}
+            resolving={resolving}
+            winner={winner}
+            onBackToMenu={onBackToMenu}
+          />
+        ) : (
+          <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm rounded-lg px-4 py-2 z-10">
+            <p className="text-gray-300 text-sm">
+              {selectedCharacters.length === 0 ? "Awaiting challengers..."
+               : selectedCharacters.length === 1 ? `${selectedCharacters[0].character.name} has entered. Waiting for opponent...`
+               : "Both fighters ready. Battle starting soon..."}
+            </p>
+          </div>
+        )}
       </ReactorProvider>
     </div>
   );

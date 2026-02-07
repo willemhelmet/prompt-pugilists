@@ -14,6 +14,12 @@ export interface Character {
   updatedAt: string;
 }
 
+export interface SelectedCharacter {
+  playerId: string;
+  character: Character;
+  playerSlot: "player1" | "player2";
+}
+
 // ============================================================
 // Room
 // ============================================================

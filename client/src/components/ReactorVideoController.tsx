@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useReactor, useReactorMessage } from "@reactor-team/js-sdk";
-import type { Battle, BattleResolution } from "../types";
+import type { Battle, BattleResolution, SelectedCharacter } from "../types";
 
-const FRAME_LIMIT = 240;
 const CYCLE_RESTART_THRESHOLD = 230;
 
 // Style lock — must match the suffix the AI engine appends to every videoPrompt.
@@ -12,10 +11,26 @@ const STYLE_SUFFIX =
   "AAA video game, Unreal Engine 5, global illumination, volumetric lighting, stylized 3D characters, vibrant saturated colors, dramatic rim lighting, shallow depth of field, cinematic camera.";
 
 interface ReactorVideoControllerProps {
-  battle: Battle;
+  battle: Battle | null;
+  environment: string | null;
+  selectedCharacters: SelectedCharacter[];
   lastResolution: BattleResolution | null;
   resolving: boolean;
   winner: string | null;
+}
+
+// ── Prompt composers ────────────────────────────────────────────
+
+function composeArenaPrompt(environment: string): string {
+  return `${environment}. Empty arena, dramatic atmosphere, camera slowly panning across the battlefield, anticipation building. ${STYLE_SUFFIX}`;
+}
+
+function composeCharacterEntrancePrompt(character: { visualFingerprint: string; textPrompt: string }, environment: string, isFirst: boolean): string {
+  const desc = character.visualFingerprint || character.textPrompt;
+  if (isFirst) {
+    return `${desc} strides confidently into ${environment}, dramatic entrance, spotlight illuminating the first challenger. Medium shot, low angle. ${STYLE_SUFFIX}`;
+  }
+  return `${desc} makes a dramatic entrance into ${environment}, facing their opponent across the arena, tension building. Medium-wide shot, dynamic angle. ${STYLE_SUFFIX}`;
 }
 
 function composeInitialPrompt(battle: Battle): string {
@@ -37,12 +52,20 @@ function composeAmbientPrompt(battle: Battle): string {
 function composeVictoryPrompt(battle: Battle, winnerId: string): string {
   const isP1Winner = battle.player1.playerId === winnerId;
   const winnerChar = isP1Winner ? battle.player1.character : battle.player2.character;
-  const loser = isP1Winner ? battle.player2.character : battle.player1.character;
-  return `${winnerChar.name} stands victorious over defeated ${loser.name}. Triumphant pose, medium-wide shot, slightly low angle. ${STYLE_SUFFIX}`;
+  const loserChar = isP1Winner ? battle.player2.character : battle.player1.character;
+  const winnerDesc = winnerChar.visualFingerprint || winnerChar.textPrompt;
+  const loserDesc = loserChar.visualFingerprint || loserChar.textPrompt;
+  const env = battle.currentState.environmentDescription;
+
+  return `${winnerDesc} strikes a triumphant victory pose, fist raised to the sky, surrounded by brilliant golden fireworks exploding across the sky, colorful confetti raining down, and radiant celebration light beams. Behind them, ${loserDesc} lies defeated on the ground. The arena (${env}) is bathed in celebratory golden light. Epic victory moment, medium-wide shot, low angle looking up at the champion. ${STYLE_SUFFIX}`;
 }
+
+// ── Controller component ────────────────────────────────────────
 
 export function ReactorVideoController({
   battle,
+  environment,
+  selectedCharacters,
   lastResolution,
   resolving,
   winner,
@@ -54,6 +77,8 @@ export function ReactorVideoController({
 
   const frameRef = useRef(0);
   const hasStartedRef = useRef(false);
+  const charCountRef = useRef(0);
+  const battleStartedRef = useRef(false);
   const lastResolutionTimestampRef = useRef<string | null>(null);
   const winnerSentRef = useRef(false);
 
@@ -96,37 +121,72 @@ export function ReactorVideoController({
     }
   }
 
-  // Initial prompt when battle starts and Reactor is ready.
-  // Small delay lets the data channel fully open after status hits "ready".
+  // Phase 1: Arena prompt — when Reactor is ready and we have environment but no battle yet
   useEffect(() => {
-    if (status !== "ready" || hasStartedRef.current) return;
+    if (status !== "ready" || hasStartedRef.current || !environment || battle) return;
 
     const timer = setTimeout(() => {
       if (hasStartedRef.current) return;
-      const prompt = composeInitialPrompt(battle);
-      console.log("[ReactorVideoController] sending initial prompt");
+      const prompt = composeArenaPrompt(environment);
+      console.log("[ReactorVideoController] sending arena prompt");
       schedulePrompt(prompt).then(() => {
         hasStartedRef.current = true;
-        console.log("[ReactorVideoController] initial prompt sent");
+        console.log("[ReactorVideoController] arena prompt sent");
       });
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [status, battle]);
+  }, [status, environment, battle]);
 
-  // When a new resolution arrives, send its videoPrompt
+  // Phase 2: Character entrance — when a new character is selected pre-battle
   useEffect(() => {
-    if (!lastResolution) return;
+    if (status !== "ready" || !hasStartedRef.current || !environment || battle) return;
+    if (selectedCharacters.length <= charCountRef.current) return;
+
+    const newChar = selectedCharacters[selectedCharacters.length - 1];
+    charCountRef.current = selectedCharacters.length;
+    const isFirst = selectedCharacters.length === 1;
+    const prompt = composeCharacterEntrancePrompt(newChar.character, environment, isFirst);
+    console.log("[ReactorVideoController] sending entrance prompt for", newChar.character.name);
+    schedulePrompt(prompt);
+  }, [status, selectedCharacters, environment, battle]);
+
+  // Phase 3: Battle start — when battle transitions to non-null
+  useEffect(() => {
+    if (!battle || battleStartedRef.current) return;
+    if (status !== "ready") return;
+
+    battleStartedRef.current = true;
+    const prompt = composeInitialPrompt(battle);
+    console.log("[ReactorVideoController] sending battle face-off prompt");
+
+    // If video was already started from pre-battle, just schedule the new prompt
+    if (hasStartedRef.current) {
+      schedulePrompt(prompt);
+    } else {
+      // Shouldn't normally happen, but handle gracefully
+      const timer = setTimeout(() => {
+        schedulePrompt(prompt).then(() => {
+          hasStartedRef.current = true;
+        });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [battle, status]);
+
+  // Phase 4: When a new resolution arrives, send its videoPrompt
+  useEffect(() => {
+    if (!battle || !lastResolution) return;
     if (lastResolution.timestamp === lastResolutionTimestampRef.current) return;
     if (status !== "ready") return;
 
     lastResolutionTimestampRef.current = lastResolution.timestamp;
     schedulePrompt(lastResolution.videoPrompt);
-  }, [lastResolution, status]);
+  }, [lastResolution, status, battle]);
 
-  // When winner is declared, reset and send victory prompt
+  // Phase 5: When winner is declared, reset and send victory prompt
   useEffect(() => {
-    if (!winner || winnerSentRef.current) return;
+    if (!battle || !winner || winnerSentRef.current) return;
     if (status !== "ready") return;
 
     winnerSentRef.current = true;
@@ -140,13 +200,26 @@ export function ReactorVideoController({
 
     const interval = setInterval(() => {
       if (frameRef.current >= CYCLE_RESTART_THRESHOLD) {
-        const prompt = composeAmbientPrompt(battle);
+        let prompt: string;
+        if (battle) {
+          prompt = composeAmbientPrompt(battle);
+        } else if (environment) {
+          // Pre-battle ambient: cycle based on what's available
+          if (selectedCharacters.length > 0) {
+            const lastChar = selectedCharacters[selectedCharacters.length - 1];
+            prompt = composeCharacterEntrancePrompt(lastChar.character, environment, selectedCharacters.length === 1);
+          } else {
+            prompt = composeArenaPrompt(environment);
+          }
+        } else {
+          return;
+        }
         resetAndStart(prompt);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [status, winner, resolving, battle]);
+  }, [status, winner, resolving, battle, environment, selectedCharacters]);
 
   return null;
 }

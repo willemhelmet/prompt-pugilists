@@ -4,7 +4,7 @@ import { socket, connectSocket } from "../lib/socket";
 import { useGameStore } from "../stores/gameStore";
 import { ReactorVideoSection } from "../components/ReactorVideoSection";
 import { useAnnouncer } from "../hooks/useAnnouncer";
-import type { PlayerConnection, Battle, BattleResolution } from "../types";
+import type { PlayerConnection, Battle, BattleResolution, Character, SelectedCharacter } from "../types";
 
 export function HostDisplay() {
   const { roomId } = useParams<{ roomId: string }>();
@@ -14,6 +14,8 @@ export function HostDisplay() {
   const [lastResolution, setLastResolution] = useState<BattleResolution | null>(null);
   const [resolving, setResolving] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
+  const [selectedCharacters, setSelectedCharacters] = useState<SelectedCharacter[]>([]);
+  const arenaAnnouncedRef = useRef(false);
   interface LogEntry {
     type: "info" | "narrative" | "damage";
     text: string;
@@ -33,6 +35,21 @@ export function HostDisplay() {
     function onPlayerJoined({ player, playerSlot }: { player: PlayerConnection; playerSlot: "player1" | "player2" }) {
       setPlayer(playerSlot, player);
       addLog(`${player.username} joined as ${playerSlot}`);
+    }
+
+    function onCharacterSelected({ playerId, character }: { playerId: string; character: Character }) {
+      const { player1: p1, player2: p2 } = useGameStore.getState();
+      const slot = p1?.playerId === playerId ? "player1"
+                 : p2?.playerId === playerId ? "player2"
+                 : null;
+      if (!slot) return;
+
+      setSelectedCharacters(prev => {
+        const filtered = prev.filter(sc => sc.playerId !== playerId);
+        return [...filtered, { playerId, character, playerSlot: slot }];
+      });
+      addLog(`${character.name} enters the arena!`);
+      announceRef.current(`And stepping into the arena... it's ${character.name}!`);
     }
 
     function onRoomFull() {
@@ -90,6 +107,7 @@ export function HostDisplay() {
     }
 
     socket.on("room:player_joined", onPlayerJoined);
+    socket.on("character:selected", onCharacterSelected);
     socket.on("room:full", onRoomFull);
     socket.on("battle:start", onBattleStart);
     socket.on("battle:action_received", onActionReceived);
@@ -100,6 +118,7 @@ export function HostDisplay() {
 
     return () => {
       socket.off("room:player_joined", onPlayerJoined);
+      socket.off("character:selected", onCharacterSelected);
       socket.off("room:full", onRoomFull);
       socket.off("battle:start", onBattleStart);
       socket.off("battle:action_received", onActionReceived);
@@ -109,6 +128,13 @@ export function HostDisplay() {
       socket.off("battle:narrator_audio", onNarratorAudio);
     };
   }, [setPlayer]);
+
+  // Announce the arena environment when it becomes available
+  useEffect(() => {
+    if (!room?.environment || arenaAnnouncedRef.current) return;
+    arenaAnnouncedRef.current = true;
+    announceRef.current(`Welcome, fight fans, to tonight's arena! ${room.environment}. Who will dare to step into this battlefield?`);
+  }, [room?.environment]);
 
   const p1 = battle?.player1;
   const p2 = battle?.player2;
@@ -151,15 +177,17 @@ export function HostDisplay() {
         </div>
       ) : (
         <div className="flex gap-4">
-          <PlayerSlot label="Player 1" player={player1} />
+          <PlayerSlot label="Player 1" player={player1} selectedChar={selectedCharacters.find(sc => sc.playerSlot === "player1")} />
           <div className="flex items-center text-gray-600 font-bold text-xl">VS</div>
-          <PlayerSlot label="Player 2" player={player2} />
+          <PlayerSlot label="Player 2" player={player2} selectedChar={selectedCharacters.find(sc => sc.playerSlot === "player2")} />
         </div>
       )}
 
       {/* Main area */}
       <ReactorVideoSection
         battle={battle}
+        environment={room?.environment ?? null}
+        selectedCharacters={selectedCharacters}
         lastResolution={lastResolution}
         resolving={resolving}
         winner={winner}
@@ -208,12 +236,20 @@ function HpBar({ name, hp, maxHp, color, align }: { name: string; hp: number; ma
   );
 }
 
-function PlayerSlot({ label, player }: { label: string; player: PlayerConnection | null }) {
+function PlayerSlot({ label, player, selectedChar }: { label: string; player: PlayerConnection | null; selectedChar?: SelectedCharacter }) {
   return (
     <div className={`flex-1 rounded-lg p-4 border ${player ? "bg-gray-900 border-green-800" : "bg-gray-900/50 border-gray-800 border-dashed"}`}>
       <p className="text-xs text-gray-500 mb-1">{label}</p>
       {player ? (
-        <p className="font-semibold text-white">{player.username}</p>
+        <div>
+          <p className="font-semibold text-white">{player.username}</p>
+          {selectedChar && (
+            <div className="flex items-center gap-2 mt-2">
+              <img src={selectedChar.character.imageUrl} alt={selectedChar.character.name} className="w-8 h-8 rounded-full object-cover" />
+              <p className="text-sm text-indigo-300">{selectedChar.character.name}</p>
+            </div>
+          )}
+        </div>
       ) : (
         <p className="text-gray-600 italic">Waiting...</p>
       )}

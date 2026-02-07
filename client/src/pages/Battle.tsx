@@ -14,6 +14,7 @@ export function Battle() {
   const [resolving, setResolving] = useState(false);
   const [lastResolution, setLastResolution] = useState<BattleResolution | null>(null);
   const [winner, setWinner] = useState<string | null>(null);
+  const [generatingAction, setGeneratingAction] = useState(false);
 
   const battle = useGameStore((s) => s.battle);
   const playerSlot = useGameStore((s) => s.playerSlot);
@@ -57,11 +58,17 @@ export function Battle() {
       setWinner(winnerId);
     }
 
+    function onActionGenerated({ suggestedAction }: { playerId: string; suggestedAction: string }) {
+      setAction(suggestedAction);
+      setGeneratingAction(false);
+    }
+
     socket.on("battle:start", onBattleStart);
     socket.on("battle:action_received", onActionReceived);
     socket.on("battle:resolving", onResolving);
     socket.on("battle:round_complete", onRoundComplete);
     socket.on("battle:end", onBattleEnd);
+    socket.on("battle:action_generated", onActionGenerated);
 
     return () => {
       socket.off("battle:start", onBattleStart);
@@ -69,8 +76,14 @@ export function Battle() {
       socket.off("battle:resolving", onResolving);
       socket.off("battle:round_complete", onRoundComplete);
       socket.off("battle:end", onBattleEnd);
+      socket.off("battle:action_generated", onActionGenerated);
     };
   }, [myPlayer, setBattle]);
+
+  function handleGenerateAction() {
+    setGeneratingAction(true);
+    socket.emit("battle:generate_action", { roomId: roomId! });
+  }
 
   function handleSubmit() {
     if (!action.trim() || submitted) return;
@@ -184,14 +197,23 @@ export function Battle() {
             </span>
           </div>
 
-          {/* Submit */}
-          <button
-            onClick={handleSubmit}
-            disabled={!action.trim() || submitted}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 py-3 rounded-lg font-semibold text-lg transition-colors"
-          >
-            {submitted ? "Waiting for opponent..." : "Submit Action"}
-          </button>
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleGenerateAction}
+              disabled={submitted || generatingAction || !!winner}
+              className="bg-gray-700 hover:bg-gray-600 disabled:bg-gray-800 disabled:text-gray-600 py-3 px-4 rounded-lg font-semibold transition-colors whitespace-nowrap"
+            >
+              {generatingAction ? "Generating..." : "✦ Generate Action"}
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!action.trim() || submitted}
+              className="flex-1 bg-indigo-600 hover:bg-indigo-500 disabled:bg-gray-700 disabled:text-gray-500 py-3 rounded-lg font-semibold text-lg transition-colors"
+            >
+              {submitted ? "Waiting for opponent..." : "Submit Action"}
+            </button>
+          </div>
         </>
       )}
     </div>

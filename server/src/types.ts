@@ -115,7 +115,11 @@ export interface Battle {
 // ============================================================
 
 export interface ClientEvents {
-  "room:create": (data: { username: string; environment: string; environmentImageUrl?: string }) => void;
+  "room:create": (data: {
+    username: string;
+    environment: string;
+    environmentImageUrl?: string;
+  }) => void;
   "room:join": (data: { roomId: string; username: string }) => void;
   "character:select": (data: { roomId: string; characterId: string }) => void;
   "player:ready": (data: { roomId: string }) => void;
@@ -168,7 +172,7 @@ export interface ServerEvents {
 // Constants
 // ============================================================
 
-export const MAX_HP = 20;
+export const MAX_HP = 40;
 export const ACTION_CHAR_LIMIT = 500;
 export const ENVIRONMENT_CHAR_LIMIT = 300;
 export const CHARACTER_PROMPT_CHAR_LIMIT = 500;

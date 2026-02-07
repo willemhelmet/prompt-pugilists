@@ -1,7 +1,7 @@
-# Prompt Pugilists - Technical Specification v3.2
+# Prompt Pugilists - Technical Specification v3.3
 
-**Working Title:** Prompt Pugilists  
-**Last Updated:** February 6, 2026  
+**Working Title:** Prompt Pugilists
+**Last Updated:** February 7, 2026
 **Status:** Hackathon Project
 
 ---
@@ -170,7 +170,7 @@ interface Character {
 - Combine both
 - Regenerate at any time to get different variations
 
-All characters have the same HP (50). Combat is entirely based on player creativity and AI interpretation.
+All characters have the same HP (20). Combat is entirely based on player creativity and AI interpretation.
 
 ### Room Schema
 
@@ -248,8 +248,8 @@ interface BattlePlayer {
   character: Character;
 
   // Fixed HP for all characters
-  currentHp: number; // Starts at 50
-  maxHp: number; // Always 50
+  currentHp: number; // Starts at 20
+  maxHp: number; // Always 20
 }
 ```
 
@@ -338,8 +338,8 @@ interface DiceRoll {
 │  Room Code: A3K9ZX             Round: 3         │
 ├────────────────┬────────────────────────────────┤
 │  Zara          │          Mordak                │
-│  HP: 35/50 ▓▓▓▓▓▓▓░░░                           │
-│                │          HP: 28/50 ▓▓▓▓▓░░░░░ │
+│  HP: 14/20 ▓▓▓▓▓▓▓░░░                           │
+│                │          HP: 11/20 ▓▓▓▓▓░░░░░ │
 ├────────────────┴────────────────────────────────┤
 │                                                  │
 │        [Reactor Video Feed - 1280x720]          │
@@ -369,7 +369,7 @@ interface DiceRoll {
 ```
 ┌─────────────────────────────────────┐
 │  You: Zara the Pyromancer           │
-│  HP: 35/50  ▓▓▓▓▓▓▓░░░             │
+│  HP: 14/20  ▓▓▓▓▓▓▓░░░             │
 ├─────────────────────────────────────┤
 │  Your Turn - Round 3                │
 │                                     │
@@ -924,16 +924,16 @@ You are the Dungeon Master for a high-stakes magical duel. Your role is to:
 - Both actions happen simultaneously - there is NO turn order
 - Roll dice (1d20) to determine success vs failure
 - Success threshold: 10+ (with modifiers based on creativity and context)
-- Damage typically ranges from 8-15 HP per successful attack
+- Damage typically ranges from 3-8 HP per successful attack
 - Get creative with how abilities interact (fire vs ice, shields vs projectiles, etc.)
 - Players can attempt ANYTHING - interpret their intent generously
 - Use the battle environment in creative ways
 - No mana restrictions - players can cast unlimited spells!
 
 **HP System:**
-- Both players start with 50 HP
-- Typical damage: 8-15 HP per attack
-- Healing: 10-20 HP
+- Both players start with 20 HP
+- Typical damage: 3-8 HP per attack
+- Healing: 4-10 HP
 - Critical moments can justify larger swings
 - If HP reaches 0, that player is defeated
 
@@ -1290,8 +1290,8 @@ CREATE INDEX idx_battles_room_id ON battles(room_id);
 
 **Characters:**
 
-- **Player 1 (Zara)**: Fire mage, 60 HP
-- **Player 2 (Mordak)**: Ice mage, 80 HP
+- **Player 1 (Zara)**: Fire mage, 20 HP
+- **Player 2 (Mordak)**: Ice mage, 20 HP
 
 **Initial State:**
 
@@ -1324,8 +1324,8 @@ CREATE INDEX idx_battles_room_id ON battles(room_id);
 {
   "interpretation": "Player 1 creates fire barrier and advances. Player 2 uses ice shield and launches counter-attack through flames.",
 
-  "player1HpChange": -8,
-  "player2HpChange": -5,
+  "player1HpChange": -5,
+  "player2HpChange": -3,
 
   "newBattleState": {
     "environmentDescription": "A towering wall of flames divides the arena, steam billowing where ice meets fire",
@@ -1376,8 +1376,8 @@ CREATE INDEX idx_battles_room_id ON battles(room_id);
 
 **Updated State:**
 
-- Player 1 (Zara): 60 → 52 HP
-- Player 2 (Mordak): 80 → 75 HP
+- Player 1 (Zara): 20 → 15 HP
+- Player 2 (Mordak): 20 → 17 HP
 
 **Reactor Scheduled:**
 
@@ -1405,8 +1405,8 @@ Frame 0: "A towering wall of roaring flames erupts across the arena as Zara step
 {
   "interpretation": "Player 1 heals and launches fireball. Player 2 weaponizes defensive shield into offensive attack.",
 
-  "player1HpChange": -15, // Net: +20 heal, -35 damage
-  "player2HpChange": -18,
+  "player1HpChange": -6,
+  "player2HpChange": -7,
 
   "newBattleState": {
     "environmentDescription": "The arena is filled with steam, melting ice, and the acrid smell of scorched stone",
@@ -1465,8 +1465,8 @@ Frame 0: "A towering wall of roaring flames erupts across the arena as Zara step
 
 **Updated State:**
 
-- Player 1 (Zara): 52 → 57 HP (healed) → 37 HP (damaged)
-- Player 2 (Mordak): 75 → 57 HP
+- Player 1 (Zara): 15 → 9 HP
+- Player 2 (Mordak): 17 → 10 HP
 
 **Battle continues until one player reaches 0 HP...**
 
@@ -1502,20 +1502,21 @@ Characters in Prompt Pugilists are **single AI-generated images** created via De
 
 **Key Features**:
 
-- All characters have **50 HP** (standardized)
+- All characters have **20 HP** (standardized)
 - No stats, abilities, or items
 - Pure visual representation
 - Inputs are saved so characters can be regenerated later
 
 ### Default Characters (Starter Set)
 
-For quick play, provide 3-5 pre-generated characters:
+For quick play, provide 6 pre-generated characters:
 
-1. **Flame Sorceress** - Fire mage in red robes
-2. **Frost Knight** - Armored warrior with ice powers
-3. **Shadow Rogue** - Dark assassin aesthetic
-4. **Nature Shaman** - Druid with wooden staff
-5. **Lightning Warrior** - Warrior-mage with electric effects
+1. **Ignis the Flame Sorceress** - Fierce fire mage in crimson robes with swirling embers
+2. **Boreas the Frost Knight** - Towering warrior in glacial plate mail with ice greatsword
+3. **Nyx the Shadow Rogue** - Lithe assassin cloaked in living shadows with twin obsidian daggers
+4. **Verdana the Nature Shaman** - Ancient druid with moss-covered robes and living vine staff
+5. **Voltaris the Storm Blade** - Battle-scarred warrior crackling with electric energy
+6. **Zephyra the Void Oracle** - Mysterious seer floating in robes of shifting starlight
 
 These serve as examples and starting points for new players.
 
@@ -1668,7 +1669,7 @@ These serve as examples and starting points for new players.
 
 ## Cost Estimates
 
-### AI API Costs (per battle, ~5 rounds avg for 50 HP)
+### AI API Costs (per battle, ~3 rounds avg for 20 HP)
 
 **Mistral AI** (mistral-large-latest + mistral-medium-latest):
 
@@ -1935,7 +1936,7 @@ The Jackbox-style local multiplayer model overcomes Reactor's single-stream limi
 ---
 
 **Project:** Prompt Pugilists  
-**Document Version**: 3.2  
-**Last Updated**: February 6, 2026  
+**Document Version**: 3.3
+**Last Updated**: February 7, 2026  
 **Hackathon**: TBD  
 **Sponsors**: Reactor, Decart, Mistral

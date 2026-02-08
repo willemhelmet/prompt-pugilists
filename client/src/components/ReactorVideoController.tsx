@@ -60,6 +60,19 @@ function composeVictoryPrompt(battle: Battle, winnerId: string): string {
   return `${winnerDesc} strikes a triumphant victory pose, fist raised to the sky, surrounded by brilliant golden fireworks exploding across the sky, colorful confetti raining down, and radiant celebration light beams. Behind them, ${loserDesc} lies defeated on the ground. The arena (${env}) is bathed in celebratory golden light. Epic victory moment, medium-wide shot, low angle looking up at the champion. ${STYLE_SUFFIX}`;
 }
 
+// ── Helpers ─────────────────────────────────────────────────────
+
+const MAX_RETRIES = 8;
+const RETRY_DELAY_MS = 500;
+
+function isDataChannelError(err: unknown): boolean {
+  return err instanceof Error && err.message.includes("Data channel not open");
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ── Controller component ────────────────────────────────────────
 
 export function ReactorVideoController({
@@ -82,24 +95,44 @@ export function ReactorVideoController({
   const lastResolutionTimestampRef = useRef<string | null>(null);
   const winnerSentRef = useRef(false);
 
-  useReactorMessage((message: { type?: string; data?: { current_frame?: number; current_prompt?: string | null; paused?: boolean } }) => {
+  useReactorMessage((message: { type?: string; data?: { current_frame?: number; current_prompt?: string | null; paused?: boolean; message?: string } }) => {
     if (message.type === "state" && message.data?.current_frame !== undefined) {
       frameRef.current = message.data.current_frame;
+    } else if (message.type === "error") {
+      console.error("[ReactorVideoController] SDK error message:", message.data?.message ?? message);
     }
   });
+
+  // Retry a command if the data channel isn't open yet (SDK reports "ready"
+  // before the WebRTC data channel finishes connecting).
+  async function sendWithRetry(command: string, args: Record<string, unknown>): Promise<void> {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await sendCommand(command, args);
+        return;
+      } catch (err) {
+        if (isDataChannelError(err) && attempt < MAX_RETRIES) {
+          console.log(`[ReactorVideoController] data channel not ready, retry ${attempt + 1}/${MAX_RETRIES}...`);
+          await wait(RETRY_DELAY_MS);
+        } else {
+          throw err;
+        }
+      }
+    }
+  }
 
   // Send a prompt to the model. On first call, schedule at frame 0 and start.
   // On subsequent calls, schedule at currentFrame + 3 (per first-party example).
   async function schedulePrompt(prompt: string) {
     try {
       const timestamp = frameRef.current === 0 ? 0 : frameRef.current + 3;
-      await sendCommand("schedule_prompt", {
+      await sendWithRetry("schedule_prompt", {
         new_prompt: prompt,
         timestamp,
       });
       // Only send start on the very first prompt (when generation hasn't begun)
       if (frameRef.current === 0) {
-        await sendCommand("start", {});
+        await sendWithRetry("start", {});
       }
     } catch (err) {
       console.error("[ReactorVideoController] command error:", err);
@@ -109,13 +142,13 @@ export function ReactorVideoController({
   // Reset and restart with a new prompt (for scene transitions like victory)
   async function resetAndStart(prompt: string) {
     try {
-      await sendCommand("reset", {});
+      await sendWithRetry("reset", {});
       frameRef.current = 0;
-      await sendCommand("schedule_prompt", {
+      await sendWithRetry("schedule_prompt", {
         new_prompt: prompt,
         timestamp: 0,
       });
-      await sendCommand("start", {});
+      await sendWithRetry("start", {});
     } catch (err) {
       console.error("[ReactorVideoController] reset error:", err);
     }

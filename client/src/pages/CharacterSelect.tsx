@@ -8,7 +8,6 @@ import type { Character } from "../types";
 export function CharacterSelect() {
   const { roomId } = useParams<{ roomId: string }>();
   const [, navigate] = useLocation();
-  const sessionId = useGameStore((s) => s.sessionId);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -17,12 +16,11 @@ export function CharacterSelect() {
 
   // Fetch characters
   useEffect(() => {
-    if (!sessionId) return;
     api
-      .getCharacters(sessionId)
+      .getCharacters()
       .then(setCharacters)
       .finally(() => setLoading(false));
-  }, [sessionId]);
+  }, []);
 
   // Socket listeners
   useEffect(() => {

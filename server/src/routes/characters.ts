@@ -21,17 +21,11 @@ function toCamelCase(row: any): any {
 export function characterRoutes(db: Database.Database): Router {
   const router = Router();
 
-  // List characters for a user
+  // List all characters
   router.get("/", (req, res) => {
-    const userId = req.query.userId as string;
-    if (!userId) {
-      res.json([]);
-      return;
-    }
-
     const characters = db
-      .prepare("SELECT * FROM characters WHERE user_id = ? ORDER BY created_at DESC")
-      .all(userId);
+      .prepare("SELECT * FROM characters ORDER BY created_at DESC")
+      .all();
 
     res.json(characters.map(toCamelCase));
   });

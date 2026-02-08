@@ -22,8 +22,7 @@ export const api = {
   createSession: () => request<{ sessionId: string }>("/auth/session", { method: "POST" }),
 
   // Characters
-  getCharacters: (userId: string) =>
-    request<any[]>(`/characters?userId=${userId}`),
+  getCharacters: () => request<any[]>(`/characters`),
 
   getCharacter: (id: string) => request<any>(`/characters/${id}`),
 

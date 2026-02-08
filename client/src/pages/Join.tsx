@@ -17,14 +17,13 @@ export function Join() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loadingChars, setLoadingChars] = useState(true);
 
-  // Fetch user's characters
+  // Fetch all characters
   useEffect(() => {
-    if (!sessionId) return;
     api
-      .getCharacters(sessionId)
+      .getCharacters()
       .then(setCharacters)
       .finally(() => setLoadingChars(false));
-  }, [sessionId]);
+  }, []);
 
   // Socket listeners
   useEffect(() => {

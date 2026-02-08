@@ -1,21 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { useGameStore } from "../stores/gameStore";
 import { api } from "../lib/api";
 import type { Character } from "../types";
 
 export function CharacterGallery() {
-  const sessionId = useGameStore((s) => s.sessionId);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!sessionId) return;
     api
-      .getCharacters(sessionId)
+      .getCharacters()
       .then(setCharacters)
       .finally(() => setLoading(false));
-  }, [sessionId]);
+  }, []);
 
   async function handleDelete(id: string) {
     await api.deleteCharacter(id);

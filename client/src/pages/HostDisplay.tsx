@@ -148,11 +148,11 @@ export function HostDisplay() {
       {battle && (
         <div className="absolute top-16 left-4 right-4 z-20 pointer-events-none">
           <div className="flex items-center gap-3">
-            <HpBar name={p1!.character.name} hp={p1!.currentHp} maxHp={p1!.maxHp} color="green" />
+            <HpBar name={p1!.character.name} hp={p1!.currentHp} maxHp={p1!.maxHp} color="green" imageUrl={p1!.character.imageUrl} />
             <div className="bg-black/60 backdrop-blur-sm rounded-full px-3 py-1 text-gray-400 font-bold text-lg shrink-0">
               VS
             </div>
-            <HpBar name={p2!.character.name} hp={p2!.currentHp} maxHp={p2!.maxHp} color="red" align="right" />
+            <HpBar name={p2!.character.name} hp={p2!.currentHp} maxHp={p2!.maxHp} color="red" align="right" imageUrl={p2!.character.imageUrl} />
           </div>
         </div>
       )}
@@ -171,18 +171,30 @@ export function HostDisplay() {
   );
 }
 
-function HpBar({ name, hp, maxHp, color, align }: { name: string; hp: number; maxHp: number; color: string; align?: string }) {
+function HpBar({ name, hp, maxHp, color, align, imageUrl }: { name: string; hp: number; maxHp: number; color: string; align?: string; imageUrl: string }) {
   const pct = (hp / maxHp) * 100;
+  const isRight = align === "right";
   return (
-    <div className={`flex-1 ${align === "right" ? "text-right" : ""}`}>
-      <p className="font-semibold text-white text-sm drop-shadow-lg">{name}</p>
-      <div className="w-full h-4 bg-black/50 backdrop-blur-sm rounded-full overflow-hidden mt-1 border border-white/10">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${color === "green" ? "bg-green-500 shadow-green-500/50 shadow-md" : "bg-red-500 shadow-red-500/50 shadow-md"}`}
-          style={{ width: `${pct}%` }}
-        />
+    <div className={`flex-1 flex items-center gap-3 ${isRight ? "flex-row-reverse" : "flex-row"}`}>
+      <img
+        src={imageUrl}
+        alt={name}
+        className={`w-14 h-14 rounded-full object-cover border-2 shrink-0 ${
+          color === "green"
+            ? "border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
+            : "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+        }`}
+      />
+      <div className={`flex-1 ${isRight ? "text-right" : ""}`}>
+        <p className="font-semibold text-white text-sm drop-shadow-lg">{name}</p>
+        <div className="w-full h-4 bg-black/50 backdrop-blur-sm rounded-full overflow-hidden mt-1 border border-white/10">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${color === "green" ? "bg-green-500 shadow-green-500/50 shadow-md" : "bg-red-500 shadow-red-500/50 shadow-md"}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="text-xs text-gray-300 mt-1 drop-shadow">{hp}/{maxHp} HP</p>
       </div>
-      <p className="text-xs text-gray-300 mt-1 drop-shadow">{hp}/{maxHp} HP</p>
     </div>
   );
 }

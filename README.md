@@ -6,6 +6,12 @@
 
 <p align="center"><strong>A multiplayer AI fighting game where your words are your weapons.</strong></p>
 
+<p align="center">
+  <a href="https://prompt-pugilists.rcdis.co">
+    <img src="https://img.shields.io/badge/%F0%9F%8E%AE%20PLAY%20NOW-prompt--pugilists.rcdis.co-7C3AED?style=for-the-badge&labelColor=4F46E5" alt="Play Now" height="50">
+  </a>
+</p>
+
 Two players. Custom characters. Natural language combat. AI-generated video. Live voice narration. All running in real time.
 
 Built for the [Supercell AI Hackathon 2026](https://luma.com/qkcem6mi). [Project Page](https://eu.junctionplatform.com/projects/supercell-ai-hackathon/view/698803ca1d0c2c060b93d96c).

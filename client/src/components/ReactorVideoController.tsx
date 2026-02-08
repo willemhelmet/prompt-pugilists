@@ -14,7 +14,6 @@ interface ReactorVideoControllerProps {
   battle: Battle | null;
   environment: string | null;
   lastResolution: BattleResolution | null;
-  resolving: boolean;
   winner: string | null;
 }
 
@@ -70,7 +69,6 @@ export function ReactorVideoController({
   battle,
   environment,
   lastResolution,
-  resolving,
   winner,
 }: ReactorVideoControllerProps) {
   const { status, sendCommand } = useReactor((state) => ({
@@ -203,9 +201,10 @@ export function ReactorVideoController({
     resetAndStart(prompt);
   }, [winner, status, battle]);
 
-  // Ambient loop: restart when approaching frame limit
+  // Ambient loop: restart when approaching frame limit.
+  // Keep running during resolution so the video doesn't go black while Mistral processes.
   useEffect(() => {
-    if (status !== "ready" || winner || resolving) return;
+    if (status !== "ready" || winner) return;
 
     const interval = setInterval(() => {
       if (frameRef.current >= CYCLE_RESTART_THRESHOLD) {
@@ -222,7 +221,7 @@ export function ReactorVideoController({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [status, winner, resolving, battle, environment]);
+  }, [status, winner, battle, environment]);
 
   return null;
 }

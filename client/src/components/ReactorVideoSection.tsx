@@ -167,7 +167,6 @@ export function ReactorVideoSection({
           battle={battle}
           environment={environment}
           lastResolution={lastResolution}
-          resolving={resolving}
           winner={winner}
         />
         {battle ? (

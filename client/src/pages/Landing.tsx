@@ -3,10 +3,7 @@ import { Link } from "wouter";
 export function Landing() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-6 gap-8">
-      <h1 className="text-5xl font-bold tracking-tight">Prompt Pugilists</h1>
-      <p className="text-gray-400 text-lg text-center max-w-md">
-        Create characters. Battle with words. Let AI decide the rest.
-      </p>
+      <img src="/pp_logo.jpg" alt="Prompt Pugilists — AI Creative Combat" className="max-w-xs w-full" />
 
       <div className="flex flex-col gap-4 w-full max-w-xs">
         <Link

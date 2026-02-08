@@ -166,7 +166,6 @@ export function ReactorVideoSection({
         <ReactorVideoController
           battle={battle}
           environment={environment}
-          selectedCharacters={selectedCharacters}
           lastResolution={lastResolution}
           resolving={resolving}
           winner={winner}
